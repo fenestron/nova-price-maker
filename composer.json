@@ -1,0 +1,31 @@
+{
+    "name": "fenestron/nova-price-maker",
+    "description": "A Laravel Nova field for setting pricing logic.",
+    "keywords": [
+        "laravel",
+        "nova",
+        "field",
+        "price"
+    ],
+    "license": "GNU General Public License v3.0",
+    "require": {
+        "php": ">=7.1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fenestron\\PriceMaker\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Fenestron\\PriceMaker\\FieldServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
