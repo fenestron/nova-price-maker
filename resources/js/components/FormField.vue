@@ -173,6 +173,8 @@
 
 
 
+
+
 </template>
 
 <script>
@@ -403,8 +405,8 @@
       };
     },
     mounted() {
-      this.setInitialValues();
-      this.setFieldsForTable();
+      // this.setInitialValues(TEST_DATA);
+      // this.setFieldsForTable(TEST_DATA);
     },
     watch: {
       'inputs': {
@@ -425,28 +427,44 @@
 
     methods: {
       setInitialValue() {
-        this.setInitialValues();
+        this.setInitialValues(this.field);
+        this.setFieldsForTable(this.field);
       },
 
       fill(formData) {
-        formData.append(this.field.attribute, this.value || '');
+        let data = {
+          service_id: this.service_id,
+          min_clients: this.inputs.min_clients,
+          max_clients: this.inputs.max_clients,
+          asset_count: this.inputs.asset_count,
+          payment_type: this.inputs.payment_type.techname,
+          price_type: this.inputs.price_type,
+          fix_price: this.inputs.fix_price,
+          workzones_type: this.inputs.workzones_type,
+          durations: this.inputs.durations,
+          options: this.inputs.options,
+          workzones: this.inputs.workzones,
+          costs: this.createCostsArray(),
+        };
+
+        formData.append(this.field.attribute, JSON.stringify(data) || []);
       },
 
       logTable() {
         console.log('This table', this.table);
       },
 
-      setInitialValues() {
+      setInitialValues(data) {
         // TODO: сменить test_data на prop с нужным названием
 
-        this.service_id = TEST_DATA.service_id || null;
-        this.inputs.min_clients = TEST_DATA.min_clients || 1;
-        this.inputs.max_clients = TEST_DATA.max_clients || 1;
-        this.inputs.fix_price = TEST_DATA.fix_price || 0;
-        this.inputs.asset_count = TEST_DATA.asset_count || 1;
-        this.inputs.prices = TEST_DATA.costs || [];
+        this.service_id = data.service_id || null;
+        this.inputs.min_clients = data.min_clients || 1;
+        this.inputs.max_clients = data.max_clients || 1;
+        this.inputs.fix_price = data.fix_price || 0;
+        this.inputs.asset_count = data.asset_count || 1;
+        this.inputs.prices = data.costs || [];
 
-        this.inputs.durations = TEST_DATA.durations || [
+        this.inputs.durations = data.durations || [
           {
             id: 1,
             name: 'Продолжительность 1',
@@ -455,13 +473,13 @@
 
         this.selectedDuration = this.inputs.durations[0].id;
 
-        this.inputs.options = TEST_DATA.options || [
+        this.inputs.options = data.options || [
           {
             id: 1,
             name: 'Опция 1',
           }];
 
-        this.inputs.workzones = TEST_DATA.workzones || [
+        this.inputs.workzones = data.workzones || [
           {
             id: 1,
             time: [
@@ -493,21 +511,21 @@
             ],
           }];
 
-        const paymentType = this.paymentTypes.find(type => type.techname === TEST_DATA.payment_type);
+        const paymentType = this.paymentTypes.find(type => type.techname === data.payment_type);
 
         this.inputs.payment_type = paymentType || {
           name: 'Индивидуальный',
           techname: 'client',
         };
 
-        const workzonesType = this.workzonesTypes.find(type => type.techname === TEST_DATA.workzones_type);
+        const workzonesType = this.workzonesTypes.find(type => type.techname === data.workzones_type);
 
         this.inputs.workzones_type = workzonesType || {
           name: 'Автоматический',
           techname: 'auto',
         };
 
-        const priceType = this.priceTypes.find(type => type.techname === TEST_DATA.price_type);
+        const priceType = this.priceTypes.find(type => type.techname === data.price_type);
 
         this.inputs.price_type = priceType || {
           name: 'За участника',
@@ -516,7 +534,7 @@
       },
 
       // Нужно подготовить реактивные свойства для полей цен
-      setFieldsForTable() {
+      setFieldsForTable(data) {
         this.isTableReady = false;
 
         // console.log('Строим таблицу для', this.inputs.payment_type.techname)
@@ -557,8 +575,8 @@
 
                   let price = 0;
 
-                  if (TEST_DATA && TEST_DATA.costs && TEST_DATA.costs.length) {
-                    const priceObj = TEST_DATA.costs.find(cost => (
+                  if (data && data.costs && data.costs.length) {
+                    const priceObj = data.costs.find(cost => (
                             cost.duration_id == this.inputs.durations[d].id &&
                             cost.min_clients == m &&
                             cost.workzone_id == this.inputs.workzones[w].id &&
@@ -609,8 +627,8 @@
 
                 let price = 0;
 
-                if (TEST_DATA && TEST_DATA.costs && TEST_DATA.costs.length) {
-                  const priceObj = TEST_DATA.costs.find(cost => (
+                if (data && data.costs && data.costs.length) {
+                  const priceObj = data.costs.find(cost => (
                           cost.duration_id == this.inputs.durations[d].id &&
                           cost.workzone_id == this.inputs.workzones[w].id &&
                           cost.option_id == this.inputs.options[o].id
@@ -649,8 +667,8 @@
                 let option = workzone[this.inputs.options[o].id];
                 let price = 0;
 
-                if (TEST_DATA && TEST_DATA.costs && TEST_DATA.costs.length) {
-                  const priceObj = TEST_DATA.costs.find(cost => (
+                if (data && data.costs && data.costs.length) {
+                  const priceObj = data.costs.find(cost => (
                           cost.duration_id == this.inputs.durations[d].id &&
                           cost.workzone_id == this.inputs.workzones[w].id &&
                           cost.option_id == this.inputs.options[o].id
