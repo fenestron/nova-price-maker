@@ -15,26 +15,20 @@
                             label Число активностей
                             input(v-model="inputs.asset_count")
 
-                    .inputs-row
                         .input-item
                             label Тип оплаты
-                            multiselect.payment-type-selector(
-                                v-model="inputs.client_type"
-                                :options="paymentTypes"
-                                label="name"
-                            )
+                            select(v-model="inputs.client_type")
+                                option(v-for="type in paymentTypes" :value="type.techname") {{ type.name }}
 
-                        .input-item(v-if="inputs.client_type && inputs.client_type.techname === 'team'")
+                        .input-item(v-if="inputs.client_type === 'team'")
                             label Тип цены
-                            multiselect.payment-type-selector(
-                                v-model="inputs.price_type"
-                                :options="priceTypes"
-                                label="name"
-                            )
 
-                        .input-item(v-if="inputs.client_type && inputs.client_type.techname === 'team' && inputs.price_type.techname === 'fix_client'")
+                            select(v-model="inputs.price_type")
+                                option(v-for="type in priceTypes" :value="type.techname") {{ type.name }}
+
+                        .input-item(v-if="inputs.client_type && inputs.client_type === 'team' && inputs.price_type === 'fix_client'")
                             label Фиксированная цена
-                            input(v-model="inputs.fix_price")
+                            input(v-model="inputs.fix_price" type="number")
 
                     .row-title Продолжительности
                     .inputs-row
@@ -70,11 +64,9 @@
                     .inputs-row
                         .input-item
                             label Тип генерации рабочих зон
-                            multiselect.payment-type-selector(
-                                v-model="inputs.time_type"
-                                :options="workzonesTypes"
-                                label="name"
-                            )
+                            select(v-model="inputs.time_type" @change="changeWorkzonesType")
+                                option(v-for="type in workzonesTypes" :value="type.techname") {{ type.name }}
+
                     .inputs-row
                         .input-item(v-for="(workzone, index) in inputs.workzones" :key="index")
                             .input-item-header
@@ -85,16 +77,20 @@
                                     .workzone-day(v-for="day in workzone.weekdays") {{ day.name || days.find(item => item.techname === day).name }}
                                 .workzone-hours(style="margin-bottom: 10px")
                                     span(v-if="inputs.time_type" v-for="(time, i) in workzone.time")
-                                        span(v-if="inputs.time_type.techname === 'auto'") {{ time.from }} - {{ time.to }}
-                                        span(v-else-if="inputs.time_type.techname === 'manual'") {{ time.from }}
+                                        span(v-if="inputs.time_type === 'auto'") {{ time.from }} - {{ time.to }}
+                                        span(v-else-if="inputs.time_type === 'manual'") {{ time.t }}
                                         span(v-if="workzone.time.length > 1 && i + 1 != workzone.time.length") ,
 
                         .input-item(v-if="showNewWorkzoneForm && inputs.time_type")
                             label Добавить рабочую зону
                             .inputs-item-fields
                                 .new-workzone-hours(v-for="(time, index) in newWorkzone.time" :key="time.id")
-                                    input(v-model="newWorkzone.time[index].from" placeholder="От" v-mask="'##:##'")
-                                    input(v-if="inputs.time_type.techname === 'auto'" v-model="newWorkzone.time[index].to" placeholder="До" v-mask="'##:##'")
+                                    template(v-if="inputs.time_type === 'auto'")
+                                        input(v-model="newWorkzone.time[index].from" placeholder="От" v-mask="'##:##'")
+                                        input(v-model="newWorkzone.time[index].to" placeholder="До" v-mask="'##:##'")
+                                    template(v-else-if="inputs.time_type === 'manual'")
+                                        input(v-model="newWorkzone.time[index].t" placeholder="Время" v-mask="'##:##'")
+
                                     button.new-time-button(v-if="index === 0" @click.prevent="addTimeInNewWorkzone()") +
                                     button.new-time-button(v-else @click.prevent="removeTimeFromWorkzone(index)") -
 
@@ -125,27 +121,27 @@
                 .table(v-if="isTableReady && !inputErrors.tableErrors.length")
                     .table-content-left
                         .empty
-                        .member-item(v-if="inputs.client_type.techname === 'various'" v-for="(member, index) in (inputs.max_clients - inputs.min_clients + 1)")
+                        .member-item(v-if="inputs.client_type === 'various'" v-for="(member, index) in (inputs.max_clients - inputs.min_clients + 1)")
                             .members-count {{ pluralizeMemberWord(Number(index) + Number(inputs.min_clients)) }}
                             .workzones
                                 .workzone(v-for="(workzone, index) in inputs.workzones" :key="index")
                                     .workzone-days
                                         .workzone-day(v-for="day in workzone.weekdays") {{ day.name || days.find(item => item.techname === day).name }}
                                     .workzone-hours(v-for="(time, i) in workzone.time")
-                                        span(v-if="inputs.time_type.techname === 'auto'") {{ time.from }} - {{ time.to }}
-                                        span(v-else-if="inputs.time_type.techname === 'manual'") {{ time.from }}
+                                        span(v-if="inputs.time_type === 'auto'") {{ time.from }} - {{ time.to }}
+                                        span(v-else-if="inputs.time_type === 'manual'") {{ time.t }}
                                         span(v-if="workzone.time.length > 1 && i + 1 != workzone.time.length") ,
 
-                        .member-item(v-if="inputs.client_type.techname !== 'various'")
-                            .members-count(v-if="inputs.client_type.techname === 'team'") Оплата за группу ({{ `${inputs.min_clients}-${inputs.max_clients}` }})
-                            .members-count(v-else-if="inputs.client_type.techname === 'individual'") 1 участник
+                        .member-item(v-if="inputs.client_type !== 'various'")
+                            .members-count(v-if="inputs.client_type === 'team'") Оплата за группу ({{ `${inputs.min_clients}-${inputs.max_clients}` }})
+                            .members-count(v-else-if="inputs.client_type === 'individual'") 1 участник
                             .workzones
                                 .workzone(v-for="(workzone, index) in inputs.workzones" :key="index")
                                     .workzone-days
                                         .workzone-day(v-for="day in workzone.weekdays") {{ day.name || days.find(item => item.techname === day).name }}
                                     .workzone-hours(v-for="(time, i) in workzone.time")
-                                        span(v-if="inputs.time_type.techname === 'auto'") {{ time.from }} - {{ time.to }}
-                                        span(v-else-if="inputs.time_type.techname === 'manual'") {{ time.from }}
+                                        span(v-if="inputs.time_type === 'auto'") {{ time.from }} - {{ time.to }}
+                                        span(v-else-if="inputs.time_type === 'manual'") {{ time.t }}
                                         span(v-if="workzone.time.length > 1 && i + 1 != workzone.time.length") ,
 
 
@@ -153,23 +149,25 @@
                         .option-column(v-for="(option, index) in inputs.options" :key="index" v-if="option.name")
                             .option-name {{ option.name }}
                             //- Инпуты для типа оплаты "за клиента"
-                            template(v-if="inputs.client_type.techname === 'various'" v-for="(member, index) in (inputs.max_clients - inputs.min_clients + 1)")
+                            template(v-if="inputs.client_type === 'various'" v-for="(member, index) in (inputs.max_clients - inputs.min_clients + 1)")
                                 .empty
                                 .workzone-price
                                     input(
                                         v-for="workzone in inputs.workzones"
+                                        type="number"
                                         placeholder="цена"
                                         v-model="table[selectedDuration][`client_${Number(index) + Number(inputs.min_clients)}`][`workzone_${workzone.id}`][option.id].price"
                                     )
 
                             //- Инпуты для остальных типов
-                            template(v-if="inputs.client_type.techname !== 'various'")
+                            template(v-if="inputs.client_type !== 'various'")
                                 .empty
                                 .workzone-price
                                     input(
                                         v-for="workzone in inputs.workzones"
+                                        type="number"
                                         placeholder="цена"
-                                        v-model="table[selectedDuration][inputs.client_type.techname][`workzone_${workzone.id}`][option.id].price"
+                                        v-model="table[selectedDuration][inputs.client_type][`workzone_${workzone.id}`][option.id].price"
                                     )
 
                 .table-errors(v-else-if="inputErrors.tableErrors.length")
@@ -177,13 +175,47 @@
                     .table-error(v-for="error in inputErrors.tableErrors") {{ error }}
                 .table-errors(v-else-if="!isTableReady") Таблица строится...
                 //- button(@click="setFieldsForTable") Построить тобличку
-                //- button(@click="logTable") Показать табличку
-                //- button(@click="formatDataForBackend") Подготовить данные для бека
+                //- button(@click="fill") Подготовить данные
+                //- button(@click="createWorkzonesArray") Подготовить воркзоны
 </template>
 
 <script>
   import {FormField, HandlesValidationErrors} from 'laravel-nova';
   import Multiselect from 'vue-multiselect'
+
+
+  const WEEKDAYS = [
+    {
+      name: 'Пн',
+      techname: 'monday'
+    },
+    {
+      name: 'Вт',
+      techname: 'tuesday'
+    },
+    {
+      name: 'Ср',
+      techname: 'wednesday'
+    },
+    {
+      name: 'Чт',
+      techname: 'thursday'
+    },
+    {
+      name: 'Пт',
+      techname: 'friday'
+    },
+    {
+      name: 'Сб',
+      techname: 'saturday'
+    },
+    {
+      name: 'Вс',
+      techname: 'sunday'
+    },
+  ]
+
+  const DEFAULT_WEEKDAYS = [...WEEKDAYS.slice(0, 5)]
 
   export default {
     components: { Multiselect },
@@ -196,36 +228,7 @@
       return {
         service_id: null,
 
-        days: [
-          {
-            name: 'Пн',
-            techname: 'monday'
-          },
-          {
-            name: 'Вт',
-            techname: 'tuesday'
-          },
-          {
-            name: 'Ср',
-            techname: 'wednesday'
-          },
-          {
-            name: 'Чт',
-            techname: 'thursday'
-          },
-          {
-            name: 'Пт',
-            techname: 'friday'
-          },
-          {
-            name: 'Сб',
-            techname: 'saturday'
-          },
-          {
-            name: 'Вс',
-            techname: 'sunday'
-          },
-        ],
+        days: WEEKDAYS,
         paymentTypes: [
           {
             name: 'Индивидуальный',
@@ -235,10 +238,10 @@
             name: 'Группа участников',
             techname: 'team'
           },
-          {
-            name: 'Зависит от числа участников',
-            techname: 'various'
-          }
+          // {
+          //     name: 'Зависит от числа участников',
+          //     techname: 'various'
+          // }
         ],
         priceTypes: [
           {
@@ -265,16 +268,7 @@
           }
         ],
         showNewWorkzoneForm: false,
-        newWorkzone: {
-          weekdays: [],
-          time: [
-            {
-              id: 1,
-              from: '',
-              to: ''
-            }
-          ]
-        },
+        newWorkzone: {},
         selectedDuration: 1,
 
         // Поля ввода
@@ -317,11 +311,11 @@
       },
       'inputs.client_type' (previousValue, currentValue) {
         if (previousValue && currentValue) {
-          if (previousValue.techname !== currentValue.techname) {
+          if (previousValue !== currentValue) {
             return this.inputs.isPaymentTypeChanged = true
           }
         }
-      }
+      },
     },
     methods: {
       fill(formData) {
@@ -330,13 +324,13 @@
           min_clients: this.inputs.min_clients,
           max_clients: this.inputs.max_clients,
           asset_count: this.inputs.asset_count,
-          client_type: this.inputs.client_type.techname,
-          price_type: this.inputs.price_type.techname,
+          client_type: this.inputs.client_type,
+          price_type: this.inputs.price_type,
           fix_price: this.inputs.fix_price,
-          time_type: this.inputs.time_type.techname,
+          time_type: this.inputs.time_type,
           durations: this.inputs.durations,
           options: this.inputs.options,
-          workzones: this.inputs.workzones,
+          workzones: this.createWorkzonesArray(),
           costs: this.createCostsArray(),
         };
 
@@ -358,6 +352,9 @@
         this.inputs.max_clients = data && data.max_clients || 1
         this.inputs.fix_price = data && data.fix_price || 0
         this.inputs.asset_count = data && data.asset_count || 1
+        this.inputs.client_type = data && data.client_type || 'individual'
+        this.inputs.time_type = data && data.time_type || 'auto'
+        this.inputs.price_type = data && data.priceType || 'client'
 
         this.inputs.durations = data && data.durations || [{
           id: 1,
@@ -379,59 +376,30 @@
             from: '08:00',
             to: '20:00'
           }],
-          weekdays: [
-            {
-              name: 'Пн',
-              techname: 'monday'
-            },
-            {
-              name: 'Вт',
-              techname: 'tuesday'
-            },
-            {
-              name: 'Ср',
-              techname: 'wednesday'
-            },
-            {
-              name: 'Чт',
-              techname: 'thursday'
-            },
-            {
-              name: 'Пт',
-              techname: 'friday'
-            }
-          ]
+          weekdays: DEFAULT_WEEKDAYS
         }]
 
-        let paymentType
-        if (data) {
-          this.paymentTypes.find(type => type.techname === data.client_type)
+        let defaultTime
+
+        if (this.inputs.time_type === 'auto') {
+          defaultTime = {
+            id: 1,
+            from: '',
+            to: ''
+          }
+        } else {
+          defaultTime = {
+            id: 1,
+            t: ''
+          }
         }
 
-        this.inputs.client_type = paymentType || {
-          name: 'Индивидуальный',
-          techname: 'individual'
+        this.newWorkzone = {
+          id: this.createUniqueId('workzones'),
+          weekdays: [],
+          time: [defaultTime]
         }
 
-        let workzonesType
-        if (data) {
-          this.workzonesTypes.find(type => type.techname === data.time_type)
-        }
-
-        this.inputs.time_type = workzonesType || {
-          name: 'Автоматический',
-          techname: 'auto'
-        }
-
-        let priceType
-        if (data) {
-          this.priceTypes.find(type => type.techname === data.price_type)
-        }
-
-        this.inputs.price_type = priceType || {
-          name: 'За участника',
-          techname: 'client'
-        }
       },
 
       // Нужно подготовить реактивные свойства для полей цен
@@ -458,7 +426,7 @@
 
           // Блок кода для типа оплаты "зависит от числа участников"
           // Строятся поля для каждого клиента
-          if (this.inputs.client_type.techname === 'various') {
+          if (this.inputs.client_type === 'various') {
             // Этот объект будет содержать поле для каждого участника
             for (let m = this.inputs.min_clients; m <= this.inputs.max_clients; m++) {
               let client = duration[`client_${m}`]
@@ -511,7 +479,7 @@
           }
 
           // Если тип оплаты "индивидуальный"
-          if (this.inputs.client_type.techname === 'individual') {
+          if (this.inputs.client_type === 'individual') {
             let client = duration.individual
 
             if (!client) {
@@ -550,7 +518,7 @@
           }
 
           // Если тип оплаты команда
-          if (this.inputs.client_type.techname === 'team') {
+          if (this.inputs.client_type === 'team') {
             let team = duration.team
 
             if (!team) {
@@ -588,7 +556,6 @@
           }
         }
 
-
         this.isTableReady = true
         this.inputs.isPaymentTypeChanged = false
       },
@@ -625,6 +592,56 @@
         }
       },
 
+      changeWorkzonesType(event) {
+        const value = event.target.value
+
+        const confirmation = confirm('Вы действительно хотите изменить тип генерации рабочих зон? Все настроенные рабочие зоны будут сброшены. Продолжить?')
+
+        if (!confirmation) {
+          if (value === 'auto') {
+            this.inputs.time_type = 'manual'
+          } else if (value === 'manual') {
+            this.inputs.time_type = 'auto'
+          }
+        } else {
+          if (value === 'auto') {
+            this.inputs.workzones = [{
+              id: 1,
+              weekdays: DEFAULT_WEEKDAYS,
+              time: [
+                {
+                  from: '10:00',
+                  to: '20:00'
+                }
+              ]
+            }]
+
+            this.newWorkzone = {
+              weekdays: [],
+              time: [{
+                from: '',
+                to: ''
+              }]
+            }
+          } else if (value === 'manual') {
+            this.inputs.workzones = [{
+              id: 1,
+              weekdays: DEFAULT_WEEKDAYS,
+              time: [{
+                t: '10:00'
+              }]
+            }]
+
+            this.newWorkzone = {
+              weekdays: [],
+              time: [{
+                t: ''
+              }]
+            }
+          }
+        }
+      },
+
       addWorkzone() {
         let id = this.createUniqueId('workzones')
 
@@ -644,7 +661,7 @@
           }
         } else if (this.inputs.time_type === 'manual') {
           newTimeObj = {
-            from: ''
+            t: ''
           }
         }
 
@@ -662,7 +679,7 @@
           }
         } else if (this.inputs.time_type === 'manual') {
           newTime = {
-            from: ''
+            t: ''
           }
         }
 
@@ -745,21 +762,21 @@
 
       },
 
-      formatDataForBackend() {
-        const data = {
-          service_id: this.service_id,
-          min_clients: this.inputs.min_clients,
-          max_clients: this.inputs.max_clients,
-          asset_count: this.inputs.asset_count,
-          client_type: this.inputs.client_type.techname,
-          price_type: this.inputs.price_type.techname,
-          fix_price: this.inputs.fix_price,
-          time_type: this.inputs.time_type,
-          durations: this.inputs.durations.map(duration => duration.techname),
-          options: this.inputs.options,
-          workzones: this.inputs.workzones,
-          costs: this.createCostsArray()
-        }
+      // Форматирование массива рабочих зон
+      // Нужно удалить русские имена дней недели
+      createWorkzonesArray() {
+        const workzones = []
+
+        this.inputs.workzones.forEach(workzone => {
+          let formattedWorkzone = {
+            id: workzone.id || this.createUniqueId('workzones'),
+            weekdays: [...workzone.weekdays.map(day => day.techname || day)],
+            time: [...workzone.time]
+          }
+          workzones.push(formattedWorkzone)
+        })
+
+        return workzones
       },
 
       createCostsArray() {
@@ -768,7 +785,7 @@
 
         for (let duration in this.table) {
 
-          if (this.inputs.client_type.techname === 'various') {
+          if (this.inputs.client_type === 'various') {
 
             for (let client in this.table[duration]) {
               const clientCount = client.split('_')[1]
@@ -795,11 +812,11 @@
               }
             }
           } else {
-            for (let workzone in this.table[duration][this.inputs.client_type.techname]) {
+            for (let workzone in this.table[duration][this.inputs.client_type]) {
               const workzoneId = workzone.split('_')[1]
 
-              for (let option in this.table[duration][this.inputs.client_type.techname][workzone]) {
-                let cost = this.table[duration][this.inputs.client_type.techname][workzone][option].price
+              for (let option in this.table[duration][this.inputs.client_type][workzone]) {
+                let cost = this.table[duration][this.inputs.client_type][workzone][option].price
 
                 if (cost) {
                   costs.push({
@@ -835,6 +852,8 @@
     align-items: center
     justify-content: center
     font-size: 14px
+
+
 
   .price-component
     width: 100%
@@ -900,7 +919,8 @@
       font-weight: bold
       margin-bottom: 10px
 
-    input
+    input, select
+      cursor: pointer
       height: 40px
       padding: 0 15px
       border-radius: 5px
@@ -909,6 +929,12 @@
       margin-bottom: 10px
       &:last-of-type
         margin-right: 0
+
+      &:focus, &:active
+        outline: none
+
+    select
+
 
     &-invalid
       color: $red
@@ -1035,6 +1061,7 @@
 
   .new-time-button
     margin-left: 10px
+    margin-right: 0 !important
 
   .table-errors
     display: flex

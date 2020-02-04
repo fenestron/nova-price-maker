@@ -18,7 +18,7 @@ class PriceMaker extends Field
             'client_type' => $service->customer_type,
             'price_type' => $service->price_type,
             'fix_price' => $service->fix_price,
-            'time_type' => $service->type,
+            'time_type' => $service->type == 'club' ? 'auto' : $service->type,
             'durations' => $service->durations,
             'options' => $service->opt, // options
             'workzones' => $service->workzones,
