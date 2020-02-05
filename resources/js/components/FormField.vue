@@ -8,12 +8,12 @@
                         .input-item
                             label Число участников
                             .inputs-item-fields
-                                input(v-model="inputs.min_clients" type="number" placeholder="Минимум" @input="validateMinClients")
-                                input(v-model="inputs.max_clients" type="number" placeholder="Максимум" @input="validateMaxClients")
+                                input.number-input(v-model="inputs.min_clients" type="number" placeholder="Минимум" @change="validateMinClients")
+                                input.number-input(v-model="inputs.max_clients" type="number" placeholder="Максимум" @change="validateMaxClients")
 
                         .input-item
                             label Число активностей
-                            input(v-model="inputs.asset_count")
+                            input(v-model="inputs.asset_count" type="number" @change="validateAssetCount")
 
                         .input-item
                             label Тип оплаты
@@ -28,7 +28,7 @@
 
                         .input-item(v-if="inputs.client_type && inputs.client_type === 'team' && inputs.price_type === 'fix_client'")
                             label Фиксированная цена
-                            input(v-model="inputs.fix_price" type="number")
+                            input.number-input(v-model="inputs.fix_price" type="number")
 
                     .row-title Продолжительности
                     .inputs-row
@@ -41,8 +41,8 @@
                                 label Продолжительность {{index + 1}}
                                 .remove-button(v-if="inputs.durations.length > 1" @click="removeDuration(duration)") x
                             .inputs-item-fields
-                                input(v-model="duration.name" placeholder="Название" @input="validateDuration(duration)")
-                                input(v-model="duration.duration" placeholder="Длительность (мин.)")
+                                input(v-model="duration.name" placeholder="Название" @input="validateDurationName(duration)")
+                                input.number-input(v-model="duration.duration" type="number" @change="validateDuration(duration)" placeholder="Длительность (мин.)")
                             .error-text(v-if="inputErrors.durationErrors[duration.id].length" v-for="error in inputErrors.durationErrors[duration.id]") {{ error }}
 
 
@@ -64,7 +64,7 @@
                     .inputs-row
                         .input-item
                             label Тип генерации рабочих зон
-                            select(v-model="inputs.time_type" @change="changeWorkzonesType")
+                            select(v-model="inputs.time_type" @change="changeWorkzonesType" disabled)
                                 option(v-for="type in workzonesTypes" :value="type.techname") {{ type.name }}
 
                     .inputs-row
@@ -152,7 +152,7 @@
                             template(v-if="inputs.client_type === 'various'" v-for="(member, index) in (inputs.max_clients - inputs.min_clients + 1)")
                                 .empty
                                 .workzone-price
-                                    input(
+                                    input.number-input(
                                         v-for="workzone in inputs.workzones"
                                         type="number"
                                         placeholder="цена"
@@ -163,7 +163,7 @@
                             template(v-if="inputs.client_type !== 'various'")
                                 .empty
                                 .workzone-price
-                                    input(
+                                    input.number-input(
                                         v-for="workzone in inputs.workzones"
                                         type="number"
                                         placeholder="цена"
@@ -177,6 +177,7 @@
                 //- button(@click="setFieldsForTable") Построить тобличку
                 //- button(@click="fill") Подготовить данные
                 //- button(@click="createWorkzonesArray") Подготовить воркзоны
+                //- button(@click="logTable") Показать таблицу
 </template>
 
 <script>
@@ -354,7 +355,7 @@
         this.inputs.asset_count = data && data.asset_count || 1
         this.inputs.client_type = data && data.client_type || 'individual'
         this.inputs.time_type = data && data.time_type || 'auto'
-        this.inputs.price_type = data && data.priceType || 'client'
+        this.inputs.price_type = data && data.price_type || 'client'
 
         this.inputs.durations = data && data.durations || [{
           id: 1,
@@ -478,17 +479,18 @@
             }
           }
 
-          // Если тип оплаты "индивидуальный"
-          if (this.inputs.client_type === 'individual') {
-            let client = duration.individual
+          // Если тип оплаты "индивидуальный" или "команда"
+          else {
+            let client = duration[this.inputs.client_type]
 
             if (!client) {
-              client = duration.individual = {}
+              client = duration[this.inputs.client_type] = {}
             }
 
             // создаем объект для каждой воркзоны
             for (let w = 0; w < this.inputs.workzones.length; w++) {
               let workzone = client[`workzone_${this.inputs.workzones[w].id}`]
+
 
               if (!workzone) {
                 workzone = client[`workzone_${this.inputs.workzones[w].id}`] = {}
@@ -517,47 +519,44 @@
             }
           }
 
-          // Если тип оплаты команда
-          if (this.inputs.client_type === 'team') {
-            let team = duration.team
+        }
 
-            if (!team) {
-              team = duration.team = {}
-            }
+        removeExtraWorkzones.apply(this)
 
-            // создаем объект для каждой воркзоны
-            for (let w = 0; w < this.inputs.workzones.length; w++) {
-              let workzone = team[`workzone_${this.inputs.workzones[w].id}`]
+        this.isTableReady = true
+        this.inputs.isPaymentTypeChanged = false
 
-              if (!workzone) {
-                workzone = team[`workzone_${this.inputs.workzones[w].id}`] = {}
+        // Удалить лишние воркзоны
+        function removeExtraWorkzones() {
+          for (let duration in this.table) {
+            if (this.inputs.client_type === 'various') {
+              for (let client in this.table[duration]) {
+                for (let workzone in this.table[duration][client]) {
+                  removeWorkzone.apply(this, [duration, workzone, client])
+                }
               }
+            } else {
+              let client = this.table[duration][this.inputs.client_type]
 
-              // ...и объект для каждой опции
-              for (let o = 0; o < this.inputs.options.length; o++) {
-                let option = workzone[this.inputs.options[o].id]
-                let price = 0
-
-                if (data && data.costs && data.costs.length) {
-                  const priceObj = data.costs.find(cost => (
-                          cost.duration_id == this.inputs.durations[d].id &&
-                          cost.workzone_id == this.inputs.workzones[w].id &&
-                          cost.option_id == this.inputs.options[o].id
-                      )
-                  )
-                  if (priceObj) price = priceObj.cost
-                }
-
-                if (!option) {
-                  workzone[this.inputs.options[o].id] = { price }
-                }
+              for (let workzone in client) {
+                removeWorkzone.apply(this, [duration, workzone])
               }
             }
           }
         }
 
-        this.isTableReady = true
-        this.inputs.isPaymentTypeChanged = false
+        function removeWorkzone(duration, workzone, client) {
+          let workzoneId = Number(workzone.split('_')[1])
+          let existingWorkzones = this.inputs.workzones.map(zone => zone.id)
+
+          if (!existingWorkzones.includes(workzoneId)) {
+            if (client) {
+              delete this.table[duration][client][workzone]
+            } else {
+              delete this.table[duration][this.inputs.client_type][workzone]
+            }
+          }
+        }
       },
 
       addDuration() {
@@ -693,7 +692,6 @@
       removeWorkzone(item) {
         const index = this.inputs.workzones.indexOf(item)
         this.inputs.workzones.splice(index, 1)
-
         for (let duration in this.table) {
           for (let client in this.table[duration]) {
             delete this.table[duration][client][`workzone_${item.id}`]
@@ -729,8 +727,12 @@
         value = Number(value)
         if (value < this.inputs.min_clients) return this.inputs.max_clients = this.inputs.min_clients
       },
+      validateAssetCount({ target: { value }}) {
+        value = Number(value)
+        if (value < 1) return this.inputs.asset_count = 1
+      },
 
-      validateDuration(currentDuration) {
+      validateDurationName(currentDuration) {
         const inputErrors = this.inputErrors.durationErrors[currentDuration.id] = []
 
         if (!currentDuration.name) {
@@ -741,6 +743,36 @@
           if (currentDuration.id !== duration.id && currentDuration.name === duration.name) {
             inputErrors.push('Продолжительность с таким названием уже существует')
           }
+        }
+      },
+
+      validateDuration(currentDuration) {
+
+        if (currentDuration.duration < 1) {
+          currentDuration.duration = 1
+        }
+
+        if (currentDuration.duration > 60 * 24) {
+          currentDuration.duration = 60 * 24
+        }
+      },
+
+      validatePrice(index, workzoneId, optionId) {
+        index = Number(index)
+        let min_clients = Number(this.inputs.min_clients)
+        let option
+
+        if (this.inputs.client_type === 'various') {
+          option = this.table[this.selectedDuration][index + min_clients][`workzone_${workzoneId}`][optionId]
+        } else {
+          option = this.table[this.selectedDuration][this.inputs.client_type][`workzone_${workzoneId}`][optionId]
+        }
+        console.log('Валидируем прайс', option)
+
+        if (option.price < 0) {
+          console.log('что')
+          option.price = 0
+          console.log('option', option)
         }
       },
 
@@ -933,13 +965,17 @@
       &:focus, &:active
         outline: none
 
-    select
-
-
     &-invalid
       color: $red
       border: 1px solid $red
 
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button
+    -webkit-appearance: none
+    margin: 0
+
+  input[type=number]
+    -moz-appearance:textfield
 
   .payment-type-selector
     width: 270px
