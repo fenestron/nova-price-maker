@@ -64,7 +64,7 @@
                     .inputs-row
                         .input-item
                             label Тип генерации рабочих зон
-                            select(v-model="inputs.time_type" @change="changeWorkzonesType" disabled)
+                            select(v-model="inputs.time_type" @change="changeWorkzonesType")
                                 option(v-for="type in workzonesTypes" :value="type.techname") {{ type.name }}
 
                     .inputs-row
