@@ -320,6 +320,7 @@
     },
     methods: {
       fill(formData) {
+        const fix_price = (this.inputs.price_type === 'fix_client' && this.inputs.client_type === 'team') ? this.inputs.fix_price : 0
         let data = {
           service_id: this.service_id,
           min_clients: this.inputs.min_clients,
@@ -327,13 +328,13 @@
           asset_count: this.inputs.asset_count,
           client_type: this.inputs.client_type,
           price_type: this.inputs.price_type,
-          fix_price: this.inputs.fix_price,
           time_type: this.inputs.time_type,
           durations: this.inputs.durations,
           options: this.inputs.options,
           workzones: this.createWorkzonesArray(),
           costs: this.createCostsArray(),
-        };
+          fix_price
+        }
 
         formData.append(this.field.attribute, JSON.stringify(data) || '')
       },
@@ -348,16 +349,16 @@
       },
 
       setInitialValues(data) {
-        this.service_id = data && data.service_id || null
-        this.inputs.min_clients = data && data.min_clients || 1
-        this.inputs.max_clients = data && data.max_clients || 1
-        this.inputs.fix_price = data && data.fix_price || 0
-        this.inputs.asset_count = data && data.asset_count || 1
-        this.inputs.client_type = data && data.client_type || 'individual'
-        this.inputs.time_type = data && data.time_type || 'auto'
-        this.inputs.price_type = data && data.price_type || 'client'
+        this.service_id = (data && data.service_id) ? data.service_id : null
+        this.inputs.min_clients = (data && data.min_clients) ? data.min_clients : 1
+        this.inputs.max_clients = (data && data.max_clients) ? data.max_clients : 1
+        this.inputs.fix_price = (data && data.fix_price) ? data.fix_price : 0
+        this.inputs.asset_count = (data && data.asset_count) ? data.asset_count : 1
+        this.inputs.client_type = (data && data.client_type) ? data.client_type : 'individual'
+        this.inputs.time_type = (data && data.time_type) ? data.time_type : 'auto'
+        this.inputs.price_type = (data && data.priceType) ? data.priceType : 'client'
 
-        this.inputs.durations = data && data.durations || [{
+        this.inputs.durations = (data && data.durations.length) ? data.durations : [{
           id: 1,
           name: 'Продолжительность 1',
           duration: '90'
@@ -366,12 +367,12 @@
         this.selectedDuration = this.inputs.durations[0].id
 
 
-        this.inputs.options = data && data.options || [{
+        this.inputs.options = (data && data.options.length) ? data.options : [{
           id: 1,
           name: 'Опция 1'
         }]
 
-        this.inputs.workzones = data && data.workzones || [{
+        this.inputs.workzones = (data && data.workzones.length) ? data.workzones : [{
           id: 1,
           time: [{
             from: '08:00',
